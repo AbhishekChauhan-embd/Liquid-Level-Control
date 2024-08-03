@@ -1,0 +1,6 @@
+﻿Name,Quantity,Component
+"U1",1," Arduino Uno R3"
+"D1, D2, D3, D4",4,"Yellow LED"
+"D5",1,"Red LED"
+"D6",1,"Green LED"
+"S1, S2, S3, S4",4," Slideswitch"
