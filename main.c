@@ -11,17 +11,17 @@
 
  /*
   * Connection:
-  *   Digital IO 12 --> High Sensor for the top tank. 
-  *   Digital IO 11 --> Low sensor for the top tank.
-  *   Digital IO 10 --> High sensor for the bottom tank.
-  *   Digital IO 09 --> Low sensor for the bottom tank.
+  *   Digital IO 12 --> High Sensor for top tank. 
+  *   Digital IO 11 --> Low sendor for top tank.
+  *   Digital IO 10 --> High sensor for bottom tank.
+  *   Digital IO 09 --> Low sensor for bottom tank.
   *   Digital IO 08 --> Water motor pump signal.
   *   Digital IO 07 --> Water supply (Solenoid valve) signal.
   */
 
 
 #define u8 char
-/*Pin definition*/
+/*Pin defination*/
 #define topHighSensor     12
 #define topLowSensor      11
 #define bottomHighSensor  10
@@ -30,9 +30,13 @@
 #define waterSupply       7
 
 char bottomTankEmpty = 0;
+char bothTankFullFlg = 0;
 //char topTankEmpty = 0;
 //char bottomTankFull = 0;
 //char topTankFull = 0;
+
+int EMPTNKDLY = 3000;
+int FULTNKDLY = 5000;
 
 
 void setup() {
@@ -46,7 +50,7 @@ void setup() {
   Serial.begin(9600);
 }
 
-//The loop function runs over and over again forever
+// the loop function runs over and over again forever
 void loop() {
 
   int topHighState = digitalRead(topHighSensor);
@@ -55,10 +59,10 @@ void loop() {
   int bottomLowState = digitalRead(bottomLowSensor);
 
   /*
-   * If the top tank is empty check the bottom tank, if not empty start the motor.
-   * If the bottom tank is also empty, turn off the pump and set the flag bottomTankEmpty.
-   * Once the water supply is there, the tank starts filling.
-   * Once bottomLowState becomes HIGH check if the tank was empty, if yes then wait for some time and start the pump. 
+   * If top tank is empty check bottom tank,if not empty start motor.
+   * If bottom tank is also empty, turn off pump and set the flag bottomTankEmpty.
+   * Once water supply is there and tank start filling.
+   * Once bottomLowState becomes HIGH check if tank was empty, if yes then wait for some time and start the pump. 
    * Wating is to avoid pump toggling.
   */
   if(topLowState == 0)
@@ -67,15 +71,15 @@ void loop() {
      {
        if(bottomTankEmpty == 1) //was it empty?
        {
-         	delay(3000);
+         	delay(EMPTNKDLY);
       		bottomTankEmpty = 0;
-    		  digitalWrite(motorPump, HIGH);
-   			  Serial.print("Motor ON ");   
+    		digitalWrite(motorPump, HIGH);
+   			Serial.print("Motor ON ");   
        }
        else
        {
           digitalWrite(motorPump, HIGH);
-		      Serial.print("Motor ON ");
+		  Serial.print("Motor ON ");
        }
     }
     else
@@ -88,28 +92,60 @@ void loop() {
   }
 
   /*
-   * if the top tank is full, turn off the water pump.
+   * if top tank is full, turn off the water pump.
    */
   if(topLowState == HIGH && topHighState == HIGH)
   {
       digitalWrite(motorPump, LOW);
       Serial.print("Motor OFF");
   }
-
   /*
-   * If the bottom tank is full, check the top tank, if not full then turn on the water pump, or else cut off the water supply.
+   * if bottom tank is empty, turn off the water pump.
+   */	
+  if(bottomLowState == 0)
+  {
+    digitalWrite(motorPump, LOW);
+    Serial.print("Motor OFF");
+    bottomTankEmpty = 1;
+    
+  }
+  /*
+   * if top tank is not full and water fills in bottom tank then turn on the pump.
+   * This featur is Optional.
+   */
+  else if(bottomLowState == 1 && bottomTankEmpty == 1 )
+  {
+ 	delay(EMPTNKDLY);
+    bottomTankEmpty = 0;
+    digitalWrite(motorPump, HIGH);
+   	Serial.print("Motor ON ");  
+  }
+  
+  /*
+   * If bottom tank if full, check top tank, if not full then turn on the water pump else cut off the water supply.
    * 
    */
   if(bottomHighState == 1) //is bottom tank full?
   {
     if(topHighState != 1) //is top tank not full?
     {
-      digitalWrite(motorPump, HIGH);
-      Serial.print("Motor ON ");  
+      if(bothTankFullFlg == 1)
+      {
+        delay(FULTNKDLY);
+        digitalWrite(motorPump, HIGH);
+      	Serial.print("Motor ON ");
+        bothTankFullFlg = 0;
+      }
+      else
+      {
+      	digitalWrite(motorPump, HIGH);
+      	Serial.print("Motor ON ");  
+      }
     }
     else
     {
       digitalWrite(waterSupply, HIGH);
+      bothTankFullFlg = 1;
       Serial.print("Water Supply OFF"); 
     }
   }
@@ -118,7 +154,7 @@ void loop() {
     digitalWrite(waterSupply, LOW);
     Serial.print("Water Supply ON");
   }
-  
+
   Serial.print(topHighState);
   Serial.print(topLowState);
   Serial.print(bottomHighState);
